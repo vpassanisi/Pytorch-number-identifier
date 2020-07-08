@@ -3,19 +3,22 @@ import { useEffect, useRef, useState } from "react";
 export const useCanvas = () => {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [ctx, setCtx] = useState({});
+  const [pred, setPred] = useState(null);
+  const [canvas, setCanvas] = useState({});
   const canvasRef = useRef(null);
 
   const mouseDown = (e) => {
-    setPos({ x: e.clientX, y: e.clientY });
+    const rect = canvas.getBoundingClientRect();
+    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
   const mouseMove = (e) => {
     if (e.buttons !== 1) return;
     ctx.beginPath(); // begin
 
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 20;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "#c0392b";
+    ctx.strokeStyle = "#ffffff";
 
     ctx.moveTo(pos.x, pos.y); // from
     mouseDown(e);
@@ -24,28 +27,50 @@ export const useCanvas = () => {
     ctx.stroke(); // draw it!
   };
 
-  const mouseUp = () => {
+  const predict = async () => {
     const canvasEl = canvasRef.current;
-    const anchor = document.getElementById("download");
-    anchor.setAttribute("download", "number.png");
-    anchor.setAttribute(
-      "href",
-      canvasEl.toDataURL("image/png").replace("image/png", "image/octet-stream")
+    let blob = await new Promise((resolve) =>
+      canvasEl.toBlob(resolve, "image/png")
     );
+    try {
+      const res = await fetch("/predict", {
+        method: "POST",
+        body: blob,
+      });
+
+      const json = await res.json();
+
+      if (json.data) {
+        setPred(json.data);
+      } else {
+        console.log(res);
+      }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const clearCanvas = () => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    setPred(null);
   };
 
   useEffect(() => {
     const canvasObj = canvasRef.current;
     const context = canvasObj.getContext("2d");
     setCtx(context);
+    setCanvas(document.getElementById("canvas"));
 
     context.canvas.width = 280;
     context.canvas.height = 280;
+
+    context.fillStyle = "black";
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
   }, []);
 
-  return [canvasRef, mouseMove, mouseDown, mouseUp, clearCanvas];
+  return [canvasRef, mouseMove, mouseDown, clearCanvas, predict, pred];
 };

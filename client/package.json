@@ -44,5 +44,5 @@
     "tailwindcss-bg-alpha": "^2.1.0",
     "tailwindcss-dark-mode": "^1.1.3"
   },
-  "proxy": "http://localhost:1337"
+  "proxy": "http://localhost:3000"
 }
